@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import TextField from '@material-ui/core/TextField';
 import Chip from '@material-ui/core/Chip';
 import Typography from '@material-ui/core/Typography';
@@ -22,28 +23,47 @@ const styles = {
     flex: '1 0 21%',
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
+};
+
+const spellSlots = {
+  1: [2],
+  2: [3],
+  3: [4, 2],
+  4: [4, 3],
+  5: [4, 3, 2],
+  6: [4, 3, 3],
+  7: [4, 3, 3, 1],
+  8: [4, 3, 3, 2],
+  9: [4, 3, 3, 3, 1],
+  10: [4, 3, 3, 3, 2],
+  11: [4, 3, 3, 3, 2, 1],
+  12: [4, 3, 3, 3, 2, 1],
+  13: [4, 3, 3, 3, 2, 1, 1],
+  14: [4, 3, 3, 3, 2, 1, 1],
+  15: [4, 3, 3, 3, 2, 1, 1, 1],
+  16: [4, 3, 3, 3, 2, 1, 1, 1],
+  17: [4, 3, 3, 3, 2, 1, 1, 1, 1],
+  18: [4, 3, 3, 3, 3, 1, 1, 1, 1],
+  19: [4, 3, 3, 3, 3, 2, 1, 1, 1],
+  20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
 };
 
 class App extends Component {
   state = {
     level: 1,
     dice: 0,
+    casterType: 1, // 1 fullcaster, 2 halfcaster, 3 thirdcaster
     con: 0,
     damage: 0,
     healing: 0,
     tempHealth: 0,
     healingSurges: [0],
-    spells: [
-      [0,0,0,0],
-      [0,0,0],
-      [0,0,0],
-      [0],
-    ],
+    spells: [],
   };
 
-  handleChange = name => event => {
-    if (event.target.value !== '') {
+  handleChange = name => (event) => {
+    if (event.target.value !== '' || event.target.value === '0') {
       this.setState({
         [name]: parseInt(event.target.value, 10),
       });
@@ -53,14 +73,35 @@ class App extends Component {
         for (let i = 0; i < lvl; i += 1) {
           healingSurges.push(0);
         }
-        this.setState({ healingSurges });
+        const { casterType } = this.state;
+        const spells = this.getSpellSlots(parseInt(event.target.value, 10), casterType);
+        this.setState({ healingSurges, spells });
+      } else if (name === 'casterType') {
+        const { level } = this.state;
+        const spells = this.getSpellSlots(level, parseInt(event.target.value, 10));
+        this.setState({ spells });
       }
-    }
-    else {
+    } else {
       this.setState({
         [name]: 0,
-      })
+      });
     }
+  };
+
+  getSpellSlots = (level, casterType) => {
+    if (casterType > 0) {
+      const casterLvl = Math.round(level / casterType);
+      const slots = spellSlots[casterLvl];
+      const spells = [];
+      slots.forEach((slot, index) => {
+        spells.push([]);
+        for (let i = 0; i < slot; i += 1) {
+          spells[index].push(0);
+        }
+      });
+      return spells;
+    }
+    return [];
   };
 
   toggleSurge = (index) => {
@@ -77,7 +118,17 @@ class App extends Component {
 
   render() {
     const { classes } = this.props;
-    const { level, dice, con, damage, healing, tempHealth, healingSurges, spells } = this.state;
+    const {
+      level,
+      dice,
+      con,
+      damage,
+      healing,
+      tempHealth,
+      healingSurges,
+      spells,
+      casterType,
+    } = this.state;
     return (
       <div className={classes.container}>
         <div className={classes.section}>
@@ -105,6 +156,14 @@ class App extends Component {
             onChange={this.handleChange('con')}
             value={con}
           />
+          <TextField
+            id="casterType"
+            label="Caster Type"
+            margin="normal"
+            variant="outlined"
+            onChange={this.handleChange('casterType')}
+            value={casterType}
+          />
         </div>
         <div className={classes.section}>
           <TextField
@@ -120,7 +179,7 @@ class App extends Component {
             label="Health"
             margin="normal"
             variant="outlined"
-            value={(dice + (level - 1)  * (dice / 2 + 1) + con * level) + healing - damage}
+            value={(dice + (level - 1) * (dice / 2 + 1) + con * level) + healing - damage}
           />
           <TextField
             id="healing"
@@ -153,21 +212,27 @@ class App extends Component {
                   variant="outlined"
                   onClick={() => this.toggleSurge(index)}
                 />
-              </div>
+              </div>,
             );
             if ((index + 1) % 4 === 0) {
               jsx.push(<br />);
             }
             return jsx;
-          }
-        )}
+          })}
         </div>
         <Typography variant="subtitle1">
           Spell slots
         </Typography>
         <div>
-          {spells.map((level, levelIndex) => {
-            const jsx = level.map((spell, spellIndex) => (
+          {spells.map((slevel, levelIndex) => {
+            const jsx = [];
+            jsx.push(
+              <span>
+                {levelIndex + 1}
+                :
+              </span>,
+            );
+            const chips = slevel.map((spell, spellIndex) => (
               <Chip
                 key={`${levelIndex}-${spellIndex}`}
                 label={spell}
@@ -175,6 +240,7 @@ class App extends Component {
                 onClick={() => this.toggleSpellSlot(levelIndex, spellIndex)}
               />
             ));
+            jsx.push(chips);
             jsx.push(<br />);
             return jsx;
           })}
@@ -183,5 +249,9 @@ class App extends Component {
     );
   }
 }
+
+App.propTypes = {
+  classes: PropTypes.shape(styles).isRequired,
+};
 
 export default withStyles(styles)(App);
